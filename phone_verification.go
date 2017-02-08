@@ -19,17 +19,12 @@ type PhoneVerificationStart struct {
 func NewPhoneVerificationStart(response *http.Response) (*PhoneVerificationStart, error) {
 	phoneVerification := &PhoneVerificationStart{HTTPResponse: response}
 	body, err := ioutil.ReadAll(response.Body)
-
 	if err != nil {
 		return phoneVerification, err
 	}
 
 	err = json.Unmarshal(body, &phoneVerification)
-	if err != nil {
-		return phoneVerification, err
-	}
-
-	return phoneVerification, nil
+	return phoneVerification, err
 }
 
 // PhoneVerificationCheck encapsulates the response from the Authy API when checking a phone verification.
@@ -49,9 +44,5 @@ func NewPhoneVerificationCheck(response *http.Response) (*PhoneVerificationCheck
 	}
 
 	err = json.Unmarshal(body, &phoneVerification)
-	if err != nil {
-		return phoneVerification, err
-	}
-
-	return phoneVerification, nil
+	return phoneVerification, err
 }

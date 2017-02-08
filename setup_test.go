@@ -9,10 +9,10 @@ import (
 )
 
 type testData struct {
-	ApiKey      string `json:"apiKey"`
+	APIKey      string `json:"apiKey"`
 	Email       string `json:"email"`
 	PhoneNumber string `json:"phoneNumber"`
-	CountryCode int    `json:"CountryCode"`
+	CountryCode int    `json:"countryCode"`
 }
 
 var data testData
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 		exitWithMessage("Unable to parse test data", 1)
 	}
 
-	if data.ApiKey == "" {
+	if data.APIKey == "" {
 		exitWithMessage("API key is required to execute tests", 1)
 	}
 

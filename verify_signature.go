@@ -40,7 +40,7 @@ func transformParams(params url.Values) string {
 	return q
 }
 
-func verifySignature(signature string, key string, uri string, method string, params url.Values, nonce string) bool {
+func verifySignature(signature string, key string, uri string, method string, params url.Values, nonce string) (bool, error) {
 	if strings.Contains(uri, "?") {
 		uri = strings.Split(uri, "?")[0]
 	}
@@ -48,7 +48,10 @@ func verifySignature(signature string, key string, uri string, method string, pa
 	raw := transformParams(params)
 
 	h := hmac.New(sha256.New, []byte(key))
-	h.Write([]byte(nonce + "|" + method + "|" + uri + "|" + url.QueryEscape(raw)))
+	_, err := h.Write([]byte(nonce + "|" + method + "|" + uri + "|" + url.QueryEscape(raw)))
+	if err != nil {
+		return false, err
+	}
 
-	return signature == base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return signature == base64.StdEncoding.EncodeToString(h.Sum(nil)), nil
 }

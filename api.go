@@ -264,7 +264,7 @@ func (authy *Authy) PhoneInformation(countryCode int, phoneNumber string, params
 }
 
 // VerifySignature return true if onetouch callback URL signature is valid
-func (authy *Authy) VerifySignature(signature string, url string, method string, params url.Values, nonce string) bool {
+func (authy *Authy) VerifySignature(signature string, url string, method string, params url.Values, nonce string) (bool, error) {
 	return verifySignature(signature, authy.APIKey, url, method, params, nonce)
 }
 

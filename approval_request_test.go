@@ -7,7 +7,7 @@ import (
 )
 
 func Test_SendApprovalRequest(t *testing.T) {
-	api := NewAuthyAPI(data.ApiKey)
+	api := NewAuthyAPI(data.APIKey)
 
 	user, err := api.RegisterUser(data.Email, data.CountryCode, data.PhoneNumber, url.Values{})
 	approvalRequest, err := api.SendApprovalRequest(user.ID, "please approve this", Details{"data1": "value1"}, url.Values{})
@@ -22,7 +22,7 @@ func Test_SendApprovalRequest(t *testing.T) {
 }
 
 func Test_FindApprovalRequest(t *testing.T) {
-	api := NewAuthyAPI(data.ApiKey)
+	api := NewAuthyAPI(data.APIKey)
 
 	user, err := api.RegisterUser(data.Email, data.CountryCode, data.PhoneNumber, url.Values{})
 	approvalRequest, err := api.SendApprovalRequest(user.ID, "please approve this", Details{"data1": "value1"}, url.Values{})
@@ -52,7 +52,7 @@ func Test_FindApprovalRequest(t *testing.T) {
 }
 
 func Test_WaitForApprovalRequest(t *testing.T) {
-	api := NewAuthyAPI(data.ApiKey)
+	api := NewAuthyAPI(data.APIKey)
 
 	user, err := api.RegisterUser(data.Email, data.CountryCode, data.PhoneNumber, url.Values{})
 	approvalRequest, err := api.SendApprovalRequest(user.ID, "please approve this", Details{"data1": "value1"}, url.Values{})
