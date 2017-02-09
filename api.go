@@ -30,13 +30,31 @@ const (
 	Voice = "call"
 )
 
+const (
+	maxTokenSize = 12
+	minTokenSize = 6
+	maxStringSize = 200
+)
+
 // Details for OneTouch transaction
 type Details map[string]string
+
+// Logos for OneTouch Transaction
+type Logos map[string]string
 
 // Authy contains credentials to connect to the Authy's API
 type Authy struct {
 	APIKey  string
 	BaseURL string
+}
+
+// ErrAuthyValidation is an error type that is being used to wrap validation errors
+type ErrAuthyValidation struct {
+	message string
+}
+
+func (err ErrAuthyValidation) Error() string {
+	return err.message
 }
 
 // NewAuthyAPI returns an instance of Authy pointing to production.
@@ -166,8 +184,10 @@ func (authy *Authy) RequestPhoneCall(userID string, params url.Values) (*PhoneCa
 }
 
 // SendApprovalRequest sends a OneTouch's approval request to the given user.
-func (authy *Authy) SendApprovalRequest(userID string, message string, details Details, params url.Values) (*ApprovalRequest, error) {
-	addParamsForOneTouch(params, message, details)
+func (authy *Authy) SendApprovalRequest(userID string, message string, details Details, logos Logos, expiresIn uint, params url.Values) (*ApprovalRequest, error) {
+	if _, err := addParamsForOneTouch(params, message, details, logos, expiresIn); err != nil {
+		return nil, err
+	}
 	path := fmt.Sprintf(`/onetouch/json/users/%s/approval_requests`, url.QueryEscape(userID))
 
 	response, err := authy.DoRequest("POST", path, params)
@@ -308,11 +328,60 @@ func (authy *Authy) buildURL(path string) string {
 	return url
 }
 
-func addParamsForOneTouch(params url.Values, message string, details map[string]string) url.Values {
+func isValidResolution(res string) bool {
+	switch res {
+	case "default",
+		"low",
+		"mid",
+		"high":
+		return true
+	}
+	return false
+}
+
+func addParamsForOneTouch(params url.Values, message string, details Details, logos Logos, expiresIn uint) (url.Values, error) {
+	if message == "" {
+		return nil, ErrAuthyValidation{"message should not be empty"}
+	}
+	if len(message) > maxStringSize {
+		message = message[:maxStringSize]
+	}
+
 	params.Set("message", message)
+
+	if expiresIn <= 0 {
+		return nil, ErrAuthyValidation{"expiry time should be greater than zero"}
+	}
+
+	params.Set("seconds_to_expire", string(expiresIn))
+
 	for key, value := range details {
+		if len(value) > maxStringSize {
+			value = value[:maxStringSize]
+		}
 		params.Set(fmt.Sprintf("details[%s]", key), value)
 	}
 
-	return params
+	for url, res := range logos {
+		if res == "" {
+			return nil, ErrAuthyValidation{"logo resolution should not be empty"}
+		}
+
+		if !isValidResolution(res) {
+			return nil, ErrAuthyValidation{"logo resolution should be either default, low, mid or high"}
+		}
+
+		if url == "" {
+			return nil, ErrAuthyValidation{"logo url should not be empty"}
+		}
+
+		if len(url) >= maxStringSize {
+			return nil, ErrAuthyValidation{"logo url size should not be greater than 200 characters"}
+		}
+
+		params.Set("logos[][res]", res)
+		params.Set("logos[][url]", url)
+	}
+
+	return params, nil
 }
