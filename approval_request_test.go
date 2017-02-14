@@ -34,7 +34,6 @@ func Test_SendApprovalRequestValidation(t *testing.T) {
 		t.Error("Should have thrown 'logo resolution should not be empty' error")
 	}
 
-
 	_, err = api.SendApprovalRequest(user.ID, "netflix and chill", Details{}, Logos{"https://someurl.com/foo.png": "foo"}, 30, url.Values{})
 	if err == nil {
 		t.Error("Should have thrown a validation error")

@@ -31,8 +31,8 @@ const (
 )
 
 const (
-	maxTokenSize = 12
-	minTokenSize = 6
+	maxTokenSize  = 12
+	minTokenSize  = 6
 	maxStringSize = 200
 )
 

@@ -1,9 +1,9 @@
 package authy
 
 import (
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 )
 
 // PhoneIntelligence wraps the phone information provided by Authy API

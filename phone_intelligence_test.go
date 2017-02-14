@@ -1,8 +1,8 @@
 package authy
 
 import (
-	"testing"
 	"net/url"
+	"testing"
 )
 
 func Test_PhoneInformation(t *testing.T) {
