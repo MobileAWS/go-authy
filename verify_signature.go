@@ -28,13 +28,17 @@ func transformParams(params url.Values) string {
 		if len(v) > 1 {
 			for i, j := range v {
 				q += k + "[]=" + j
-				if i < len(v) - 1 {
+				if i < len(v)-1 {
 					q += "&"
 				}
 			}
 			continue
 		}
-		q += k + "=" + v[0]
+		if len(v) > 0 {
+			q += k + "=" + v[0]
+		} else {
+			q += k + "="
+		}
 	}
 
 	return q
