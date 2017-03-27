@@ -18,7 +18,8 @@ type testData struct {
 var data testData
 
 func TestMain(m *testing.M) {
-	buf, err := ioutil.ReadFile("test_data.json")
+	// Replace values in onetouch_test_data.json with production values to test OneTouch APIs
+	buf, err := ioutil.ReadFile("onetouch_test_data.json")
 	if err != nil {
 		exitWithMessage("Error occurred while setting up test data", 1)
 	}

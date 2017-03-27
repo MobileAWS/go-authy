@@ -1,4 +1,4 @@
 *.swp
-test_data.json
+*.logs
 .idea
 coverage.out
