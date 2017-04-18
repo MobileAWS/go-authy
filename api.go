@@ -30,13 +30,31 @@ const (
 	Voice = "call"
 )
 
+const (
+	maxTokenSize  = 12
+	minTokenSize  = 6
+	maxStringSize = 200
+)
+
 // Details for OneTouch transaction
 type Details map[string]string
+
+// Logos for OneTouch Transaction
+type Logos map[string]string
 
 // Authy contains credentials to connect to the Authy's API
 type Authy struct {
 	APIKey  string
 	BaseURL string
+}
+
+// ErrAuthyValidation is an error type that is being used to wrap validation errors
+type ErrAuthyValidation struct {
+	message string
+}
+
+func (err ErrAuthyValidation) Error() string {
+	return err.message
 }
 
 // NewAuthyAPI returns an instance of Authy pointing to production.
@@ -109,6 +127,35 @@ func (authy *Authy) VerifyToken(userID string, token string, params url.Values) 
 	return tokenVerification, err
 }
 
+// RegisterUserActivity register a new user activity given a user activity type.
+func (authy *Authy) RegisterUserActivity(userID string, activityType UserActivityType, params url.Values) (*UserActivity, error) {
+	Logger.Println("Registering Authy user activity with id", userID, "and activity type", activityType)
+
+	path := fmt.Sprintf(`/protected/json/users/%s/register_activity`, url.QueryEscape(userID))
+	params.Set("type", string(activityType))
+
+	response, err := authy.DoRequest("POST", path, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewUserActivity(response)
+}
+
+// AppDetails returns application details
+func (authy *Authy) AppDetails(params url.Values) (*AppDetails, error) {
+	Logger.Println("Requesting application details")
+	path := "/protected/json/app/details"
+
+	response, err := authy.DoRequest("GET", path, params)
+	if err != nil {
+		return nil, err
+	}
+
+	appDetails, err := NewAppDetails(response)
+	return appDetails, err
+}
+
 // RequestSMS requests a SMS for the given userID
 func (authy *Authy) RequestSMS(userID string, params url.Values) (*SMSRequest, error) {
 	path := "/protected/json/sms/" + url.QueryEscape(userID)
@@ -137,8 +184,10 @@ func (authy *Authy) RequestPhoneCall(userID string, params url.Values) (*PhoneCa
 }
 
 // SendApprovalRequest sends a OneTouch's approval request to the given user.
-func (authy *Authy) SendApprovalRequest(userID string, message string, details Details, params url.Values) (*ApprovalRequest, error) {
-	addParamsForOneTouch(params, message, details)
+func (authy *Authy) SendApprovalRequest(userID string, message string, details Details, logos Logos, expiresIn uint, params url.Values) (*ApprovalRequest, error) {
+	if _, err := addParamsForOneTouch(params, message, details, logos, expiresIn); err != nil {
+		return nil, err
+	}
 	path := fmt.Sprintf(`/onetouch/json/users/%s/approval_requests`, url.QueryEscape(userID))
 
 	response, err := authy.DoRequest("POST", path, params)
@@ -219,6 +268,26 @@ func (authy *Authy) CheckPhoneVerification(countryCode int, phoneNumber string, 
 	return NewPhoneVerificationCheck(response)
 }
 
+// PhoneInformation fetches phone information.
+func (authy *Authy) PhoneInformation(countryCode int, phoneNumber string, params url.Values) (*PhoneIntelligence, error) {
+	params.Set("country_code", strconv.Itoa(countryCode))
+	params.Set("phone_number", phoneNumber)
+
+	path := fmt.Sprintf("/protected/json/phones/info")
+	response, err := authy.DoRequest("GET", path, params)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+	return NewPhoneIntelligence(response)
+}
+
+// VerifySignature return true if onetouch callback URL signature is valid
+func (authy *Authy) VerifySignature(signature string, url string, method string, params url.Values, nonce string) (bool, error) {
+	return verifySignature(signature, authy.APIKey, url, method, params, nonce)
+}
+
 // DoRequest performs a HTTP request to the Authy API
 func (authy *Authy) DoRequest(method string, path string, params url.Values) (*http.Response, error) {
 	apiURL := authy.buildURL(path)
@@ -259,11 +328,60 @@ func (authy *Authy) buildURL(path string) string {
 	return url
 }
 
-func addParamsForOneTouch(params url.Values, message string, details map[string]string) url.Values {
+func isValidResolution(res string) bool {
+	switch res {
+	case "default",
+		"low",
+		"mid",
+		"high":
+		return true
+	}
+	return false
+}
+
+func addParamsForOneTouch(params url.Values, message string, details Details, logos Logos, expiresIn uint) (url.Values, error) {
+	if message == "" {
+		return nil, ErrAuthyValidation{"message should not be empty"}
+	}
+	if len(message) > maxStringSize {
+		message = message[:maxStringSize]
+	}
+
 	params.Set("message", message)
+
+	if expiresIn <= 0 {
+		return nil, ErrAuthyValidation{"expiry time should be greater than zero"}
+	}
+
+	params.Set("seconds_to_expire", string(expiresIn))
+
 	for key, value := range details {
+		if len(value) > maxStringSize {
+			value = value[:maxStringSize]
+		}
 		params.Set(fmt.Sprintf("details[%s]", key), value)
 	}
 
-	return params
+	for url, res := range logos {
+		if res == "" {
+			return nil, ErrAuthyValidation{"logo resolution should not be empty"}
+		}
+
+		if !isValidResolution(res) {
+			return nil, ErrAuthyValidation{"logo resolution should be either default, low, mid or high"}
+		}
+
+		if url == "" {
+			return nil, ErrAuthyValidation{"logo url should not be empty"}
+		}
+
+		if len(url) >= maxStringSize {
+			return nil, ErrAuthyValidation{"logo url size should not be greater than 200 characters"}
+		}
+
+		params.Set("logos[][res]", res)
+		params.Set("logos[][url]", url)
+	}
+
+	return params, nil
 }
